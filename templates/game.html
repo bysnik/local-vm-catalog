@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}{{ game.title }} - VN Catalog{% endblock %}
+{% block content %}
+<div class="game-detail">
+    <div class="game-header">
+        <div class="cover">
+            {% if game.local_image %}
+                <img src="{{ game.local_image }}" alt="{{ game.title }}">
+            {% elif game.image %}
+                <img src="{{ game.image }}" alt="{{ game.title }}" onerror="this.parentElement.innerHTML='<div class=\'no-cover\'>No Cover</div>'">
+            {% else %}
+                <div class="no-cover">No Cover</div>
+            {% endif %}
+        </div>
+
+        <div class="game-meta">
+            <h1>{{ game.title }}</h1>
+
+            <div class="vndb-form">
+                <form method="POST" action="{{ url_for('set_vndb', folder=folder) }}" class="inline-form">
+                    <label>🔗 VNDB:</label>
+                    <input type="url" name="vndb_url" value="{{ game.manual_vndb_url or game.vndb_url or '' }}" placeholder="https://vndb.org/v12345">
+                    <button type="submit">💾</button>
+                </form>
+                {% if game.vndb_url %}
+                <a href="{{ game.vndb_url }}" target="_blank" class="vndb-link">Открыть на VNDB →</a>
+                {% endif %}
+            </div>
+
+            <div class="info-block">
+                {% if game.released %}<div><strong>📅</strong> {{ game.released }}</div>{% endif %}
+                {% if game.developers %}
+                <div>
+                    <strong>👨‍💻</strong>
+                    {% for dev in game.developers %}
+                        {% if game.developer_links and dev in game.developer_links %}
+                            <a href="{{ game.developer_links[dev] }}" target="_blank" class="dev-link">{{ dev }}</a>
+                        {% else %}{{ dev }}{% endif %}
+                        {% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </div>{% endif %}
+            </div>
+
+            {% if game.tags %}
+            <div class="tags-block">
+                <h3>🏷️ Теги</h3>
+                <div class="tags">
+                    {% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+                </div>
+            </div>{% endif %}
+        </div>
+    </div>
+
+    {% if game.description %}
+    <div class="description">
+        <h2>📖 Описание</h2>
+        <div class="description-content">{{ game.description | safe }}</div>
+    </div>{% endif %}
+
+    <div class="folder-contents">
+        <h2>📁 Папка: <code>{{ full_path or folder }}</code></h2>
+        {% if folder_contents %}
+        <ul class="file-list">
+            {% for item in folder_contents %}
+            <li class="file-item">
+                <span class="file-icon">{{ '📁' if item.is_dir else '📄' }}</span>
+                <span class="file-name" title="{{ item.name }}">{{ item.name }}</span>
+                {% if not item.is_dir %}<span class="file-size">{{ item.size_str }}</span>{% endif %}
+            </li>{% endfor %}
+        </ul>
+        {% if is_truncated %}<p class="truncate-note">⚠️ Показано 300 элементов</p>{% endif %}
+        {% else %}
+        <p class="empty-folder">🗂️ Пусто</p>{% endif %}
+    </div>
+
+    {# === СКРИНШОТЫ (убран target="_blank", добавлен класс) === #}
+    {% if game.local_screenshots %}
+    <div class="screenshots">
+        <h2>🖼️ Скриншоты</h2>
+        <div class="screenshots-grid">
+            {% for ss in game.local_screenshots %}
+            {% if ss %}
+            <a href="{{ ss }}" class="screenshot-link" title="Нажмите для просмотра на весь экран">
+                <img src="{{ ss }}" alt="Screenshot {{ loop.index }}" loading="lazy">
+            </a>
+            {% endif %}{% endfor %}
+        </div>
+    </div>{% endif %}
+
+    {% if game.releases_ru %}
+    <div class="releases-section">
+        <h2>🇷🇺 Переводы</h2>
+        <table class="releases-table">
+            <thead><tr><th>Дата</th><th>Рейтинг</th><th>Платформа</th><th>Название</th><th>Ссылка</th></tr></thead>
+            <tbody>
+                {% for r in game.releases_ru %}
+                <tr>
+                    <td>{{ r.date }}</td>
+                    <td>{{ r.rating }}</td>
+                    <td>{{ r.platform }}</td>
+                    <td>
+                        {% if r.name_link %}<a href="{{ r.name_link }}" target="_blank">{{ r.name }}</a>
+                        {% else %}{{ r.name }}{% endif %}
+                        {% if '(unofficial' in r.name %}<small class="unofficial">неоф.</small>{% endif %}
+                    </td>
+                    <td>{% if r.link_url %}<a href="{{ r.link_url }}" target="_blank" class="release-link">🔗</a>{% endif %}</td>
+                </tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>{% endif %}
+
+    <div class="back-link"><a href="{{ url_for('index') }}">← Назад</a></div>
+</div>
+
+{# === LIGHTBOX === #}
+<div id="screenshot-lightbox" class="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <div class="lightbox-content">
+        <img id="lightbox-img" src="" alt="Screenshot">
+        <button class="lightbox-nav prev" onclick="navigateLightbox(-1)">❮</button>
+        <button class="lightbox-nav next" onclick="navigateLightbox(1)">❯</button>
+        <div class="lightbox-counter" id="lightbox-counter"></div>
+        <div class="lightbox-title" id="lightbox-title">{{ game.title }}</div>
+    </div>
+</div>
+
+<script>
+    let lightboxScreenshots = [];
+    let lightboxIndex = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Собираем все скриншоты
+        const links = document.querySelectorAll('.screenshot-link');
+        lightboxScreenshots = Array.from(links).map(l => l.href);
+
+        // Вешаем обработчик клика
+        links.forEach((link, idx) => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault(); // 🔑 ОТКЛЮЧАЕМ переход по ссылке
+                openLightbox(idx);
+            });
+        });
+
+        // Клавиатура
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') navigateLightbox(-1);
+            if (e.key === 'ArrowRight') navigateLightbox(1);
+        });
+    });
+
+    function openLightbox(index) {
+        lightboxIndex = index;
+        const box = document.getElementById('screenshot-lightbox');
+        const img = document.getElementById('lightbox-img');
+        const counter = document.getElementById('lightbox-counter');
+
+        img.src = lightboxScreenshots[index];
+        counter.textContent = `${index + 1} / ${lightboxScreenshots.length}`;
+
+        box.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Блокируем скролл фона
+    }
+
+    function closeLightbox() {
+        const box = document.getElementById('screenshot-lightbox');
+        box.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(() => { document.getElementById('lightbox-img').src = ''; }, 300);
+    }
+
+    function navigateLightbox(dir) {
+        if (lightboxScreenshots.length === 0) return;
+        lightboxIndex = (lightboxIndex + dir + lightboxScreenshots.length) % lightboxScreenshots.length;
+
+        const img = document.getElementById('lightbox-img');
+        const counter = document.getElementById('lightbox-counter');
+        img.style.opacity = '0';
+
+        setTimeout(() => {
+            img.src = lightboxScreenshots[lightboxIndex];
+            img.onload = () => { img.style.opacity = '1'; };
+            counter.textContent = `${lightboxIndex + 1} / ${lightboxScreenshots.length}`;
+        }, 150);
+    }
+
+    // Закрытие при клике на затемнённый фон
+    document.getElementById('screenshot-lightbox').addEventListener('click', (e) => {
+        if (e.target.id === 'screenshot-lightbox') closeLightbox();
+    });
+</script>
+{% endblock %}

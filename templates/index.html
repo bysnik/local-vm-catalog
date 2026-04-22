@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Каталог визуальных новелл{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>🎮 Каталог визуальных новелл</h1>
+    <p class="subtitle">Найдено: {{ total_standalone }} игр, {{ total_series }} серий</p>
+
+    {% if series_data %}
+    <section class="series-section"><h2>📚 Серии</h2>
+    {% for series_name, games in series_data.items() %}
+    <div class="series-card"><h3 class="series-title">{{ series_name }}</h3><div class="games-grid">
+        {% for game in games %}
+        <div class="game-card"><a href="{{ url_for('game_page', game_path=(game.series + '/' + game.folder) if game.series else game.folder) }}">
+            {% if game.local_image %}
+                <img src="{{ game.local_image }}" alt="{{ game.title }}" loading="lazy">
+            {% elif game.image %}
+                <img src="{{ game.image }}" alt="{{ game.title }}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'no-image\'>No Cover</div>'">
+            {% else %}
+                <div class="no-image">No Cover</div>
+            {% endif %}
+            <div class="game-info"><h3>{{ game.title }}</h3>
+                {% if game.tags %}<div class="tags">{% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div>{% endif %}
+            </div>
+        </a></div>
+        {% endfor %}
+    </div></div>{% endfor %}</section>{% endif %}
+
+    {% if standalone_games %}
+    <section class="standalone-section"><h2>{% if series_data %}🎮 Отдельные игры{% else %}🎮 Все игры{% endif %}</h2>
+    <div class="games-grid">
+        {% for game in standalone_games %}
+        <div class="game-card"><a href="{{ url_for('game_page', game_path=game.folder) }}">
+            {% if game.local_image %}
+                <img src="{{ game.local_image }}" alt="{{ game.title }}" loading="lazy">
+            {% elif game.image %}
+                <img src="{{ game.image }}" alt="{{ game.title }}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'no-image\'>No Cover</div>'">
+            {% else %}
+                <div class="no-image">No Cover</div>
+            {% endif %}
+            <div class="game-info"><h3>{{ game.title }}</h3>
+                {% if game.tags %}<div class="tags">{% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div>{% endif %}
+            </div>
+        </a></div>
+        {% endfor %}
+    </div></section>
+    {% elif not series_data %}
+    <div class="no-games"><p>📁 Пусто. Добавьте игры в <code>{{ GAMES_FOLDER or './games' }}</code></p></div>
+    {% endif %}
+</div>
+{% endblock %}
