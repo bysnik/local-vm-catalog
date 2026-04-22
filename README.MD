@@ -6,6 +6,9 @@
 
 ![](/readme/standalone.png)
 
+
+![](/readme/gamepage.png)
+
 ## 🗂️ Как размещать игры
 
 ```
