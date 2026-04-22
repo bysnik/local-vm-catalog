@@ -14,5 +14,7 @@ pip-delete-this-directory.txt
 data/
 static/covers/
 static/screenshots/
+games/
+games
 *.log
 .DS_Store
