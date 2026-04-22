@@ -9,13 +9,26 @@
 ## 🗂️ Как размещать игры
 
 ```
-games/
-├── AIR/                    ← одна игра
-├── Clannad/                ← одна игра
-└── Key_Trilogy/           ← серия (папка с папками)
-    ├── Kanon/
-    ├── AIR/
-    └── CLANNAD/
+.
+├── app.py
+├── games/
+│  ├── AIR/                   ← одна игра
+│  ├── Clannad/               ← одна игра
+│  │   Key_Trilogy/           ← серия (папка с папками)
+│  │   ├── Kanon/
+│  │   ├── AIR/
+│  │   └── CLANNAD/
+├── README.md
+├── requirements.txt
+├── static
+│   ├── covers
+│   ├── screenshots
+│   └── style.css
+├── templates
+│   ├── base.html
+│   ├── game.html
+│   └── index.html
+└── vn_scraper.py
 ```
 
 ### Правила:
