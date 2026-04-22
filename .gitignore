@@ -1,5 +1,18 @@
-games/
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Проект
 data/
 static/covers/
 static/screenshots/
+*.log
+.DS_Store
