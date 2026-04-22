@@ -21,8 +21,8 @@
 ├── README.md
 ├── requirements.txt
 ├── static
-│   ├── covers
-│   ├── screenshots
+│   ├── covers/
+│   ├── screenshots/
 │   └── style.css
 ├── templates
 │   ├── base.html
