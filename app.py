@@ -1,12 +1,57 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import os
 import math
 import time
 import requests
 from typing import Dict, Optional, List
+from requests import Session
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+
 from vn_scraper import VNDBScraper
 import json
 
+# ============================================================================
+# НАСТРОЙКА СЕССИИ С ПОВТОРНЫМИ ПОПЫТКАМИ И ЗАГОЛОВКАМИ
+# ============================================================================
+def create_http_session() -> Session:
+    """Создаёт сессию с ретраями и заголовками, имитирующими браузер"""
+    session = Session()
+
+    # Стратегия повторных попыток
+    retry = Retry(
+        total=2,
+        backoff_factor=0.3,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET", "HEAD", "OPTIONS"]
+    )
+
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+
+    # Заголовки, чтобы не блокировал CDN (Cloudflare и т.п.)
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Referer": "https://vndb.org/",
+        "Connection": "keep-alive",
+        "Sec-Fetch-Dest": "image",
+        "Sec-Fetch-Mode": "no-cors",
+    })
+
+    return session
+
+# Глобальная сессия для всего приложения
+http_session = create_http_session()
+
+# ============================================================================
+# ИНИЦИАЛИЗАЦИЯ FLASK
+# ============================================================================
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
@@ -16,7 +61,9 @@ CACHE_FILE = os.path.join(DATA_FOLDER, 'games_cache.json')
 
 scraper = VNDBScraper()
 
-
+# ============================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ============================================================================
 def ensure_dirs():
     """Создание необходимых директорий"""
     for d in [GAMES_FOLDER, DATA_FOLDER, 'static/covers', 'static/screenshots']:
@@ -24,18 +71,18 @@ def ensure_dirs():
 
 
 def load_cache() -> Dict:
-    """Загрузка кэша"""
+    """Загрузка кэша из JSON"""
     if os.path.exists(CACHE_FILE):
         try:
             with open(CACHE_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ Ошибка загрузки кэша: {e}")
     return {}
 
 
 def save_cache(cache: Dict):
-    """Сохранение кэша"""
+    """Сохранение кэша в JSON"""
     os.makedirs(DATA_FOLDER, exist_ok=True)
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
         json.dump(cache, f, ensure_ascii=False, indent=2)
@@ -43,13 +90,13 @@ def save_cache(cache: Dict):
 
 def download_image(url: str, folder: str, filename: str) -> Optional[str]:
     """
-    Скачивание изображения.
+    Скачивание изображения с повторными попытками и правильными заголовками.
     Возвращает локальный путь /static/folder/filename если успешно, иначе внешний URL.
     """
     if not url or not isinstance(url, str):
         return None
 
-    # Определяем расширение
+    # Определяем расширение файла
     ext = os.path.splitext(url)[1].lower()
     if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
         ext = '.jpg'
@@ -62,16 +109,32 @@ def download_image(url: str, folder: str, filename: str) -> Optional[str]:
         return f"/static/{folder}/{filename}"
 
     try:
-        response = requests.get(url, timeout=15)
+        # Раздельные таймауты: connect=5s, read=20s
+        response = http_session.get(url, timeout=(5, 20))
+
         if response.status_code == 200:
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
             with open(filepath, 'wb') as f:
                 f.write(response.content)
             return f"/static/{folder}/{filename}"
-    except Exception as e:
-        print(f"⚠️ Не удалось скачать {url}: {e}")
+        elif response.status_code == 403:
+            print(f"⚠️ Доступ запрещён (403) для {url} — возможно, нужен актуальный User-Agent")
+        elif response.status_code == 429:
+            print(f"⚠️ Слишком много запросов (429) для {url} — делаем паузу")
+            time.sleep(2)
+        else:
+            print(f"⚠️ HTTP {response.status_code} при загрузке {url}")
 
-    # Фолбэк на внешний URL
+    except requests.exceptions.Timeout:
+        print(f"⚠️ Таймаут при загрузке {url}")
+    except requests.exceptions.ConnectionError as e:
+        print(f"⚠️ Ошибка соединения {url}: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Ошибка запроса {url}: {e}")
+    except Exception as e:
+        print(f"⚠️ Неожиданная ошибка при скачивании {url}: {e}")
+
+    # Фолбэк: возвращаем внешний URL, если не удалось скачать
     return url
 
 
@@ -94,14 +157,17 @@ def download_game_assets(game_info: Dict, folder_name: str) -> Dict:
             local_path = download_image(ss_url, 'screenshots', f"{folder_name}_{i}{ext}")
             if local_path:
                 local_screenshots.append(local_path)
-    game_info['local_screenshots'] = local_screenshots
+            # Небольшая задержка между запросами к одному домену
+            time.sleep(0.2)
 
+    game_info['local_screenshots'] = local_screenshots
     return game_info
 
 
 def scan_games(base_path: str) -> Dict[str, List[Dict]]:
     """Сканирование структуры папок: серии и отдельные игры"""
     result = {'series': {}, 'standalone': []}
+
     if not os.path.exists(base_path):
         return result
 
@@ -145,8 +211,8 @@ def get_folder_contents(folder_path: str, limit: int = 300):
                 'size': os.path.getsize(full) if os.path.isfile(full) else 0
             })
         items.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
-    except:
-        pass
+    except Exception as e:
+        print(f"⚠️ Ошибка сканирования папки {folder_path}: {e}")
     return items, truncated
 
 
@@ -159,6 +225,9 @@ def fmt_size(b: int) -> str:
     return f"{round(b / (1024 ** i), 2)} {units[i]}"
 
 
+# ============================================================================
+# ROUTES FLASK
+# ============================================================================
 @app.route('/')
 def index():
     """Главная страница — только чтение из кэша, БЕЗ сетевых запросов"""
@@ -168,6 +237,7 @@ def index():
 
     def get_display_info(folder: str, path: str, series: Optional[str]) -> Dict:
         data = cache.get(folder, {})
+
         # Проверяем, есть ли локальная обложка
         local_img = None
         if data.get('image'):
@@ -192,9 +262,11 @@ def index():
         tag_f = request.args.get('tag', '')
         dev_f = request.args.get('dev', '')
         result = []
+
         for g in games:
             info = get_display_info(g['folder'], g['path'], g.get('series'))
             data = cache.get(g['folder'], {})
+
             if tag_f and tag_f not in data.get('tags', []):
                 continue
             if dev_f and dev_f not in data.get('developers', []):
@@ -209,10 +281,12 @@ def index():
             result.sort(key=lambda x: x['title'].lower())
         else:
             result.sort(key=lambda x: x['folder'].lower())
+
         return result
 
     standalone = apply_filters(structure['standalone'])
     series_data = {}
+
     for name, games in structure['series'].items():
         filtered = apply_filters(games)
         if filtered:
@@ -256,7 +330,6 @@ def game_page(game_path: str):
     """Страница игры — ВСЕ данные уже в кэше, изображения уже скачаны"""
     ensure_dirs()
     cache = load_cache()
-
     folder = game_path.strip('/').split('/')[-1]
     full_path = os.path.join(GAMES_FOLDER, game_path.strip('/'))
     data = cache.get(folder, {})
@@ -291,7 +364,6 @@ def refresh():
     ensure_dirs()
     cache = load_cache()
     structure = scan_games(GAMES_FOLDER)
-
     all_games = structure['standalone'] + [g for series in structure['series'].values() for g in series]
     updated = 0
 
@@ -318,26 +390,34 @@ def refresh():
                 # Если не нашли — сохраняем хотя бы название
                 cache[folder] = {**existing, 'title': folder}
 
-        time.sleep(0.5)  # Вежливая задержка для API
+        # Вежливая задержка для API и CDN
+        time.sleep(0.5)
 
     save_cache(cache)
 
     # Редирект с мета-тегом
-    return f'''<!DOCTYPE html><html><head><meta charset="UTF-8">
+    return f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
     <meta http-equiv="refresh" content="2;url={url_for('index')}">
     <title>Готово</title>
     <style>
         body{{font-family:sans-serif;text-align:center;padding:50px;
         background:linear-gradient(135deg,#667eea,#764ba2);color:white}}
-        .box{{background:rgba(255,255,255,0.95);color:#333;padding:2rem;
+        .box{{background:rgba(255,255,255,0.95); color:#333;padding:2rem;
         border-radius:12px;display:inline-block}}
-    </style></head>
-    <body><div class="box">
+    </style>
+</head>
+<body>
+    <div class="box">
         <h2>✅ Обновление завершено!</h2>
         <p>Обновлено: <strong>{updated}</strong> игр</p>
         <p>🖼️ Все обложки и скриншоты скачаны</p>
         <p>Возврат на главную...</p>
-    </div></body></html>'''
+    </div>
+</body>
+</html>'''
 
 
 @app.route('/static/<path:f>')
