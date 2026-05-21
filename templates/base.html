@@ -9,6 +9,7 @@
 <body>
     <header>
         <nav>
+            <!-- Логотип всегда ведёт на главную. JS обработает скролл. -->
             <a href="{{ url_for('index') }}" class="logo">📚 VN Catalog</a>
             <div class="nav-links">
                 <a href="{{ url_for('index') }}">Все игры</a>
@@ -16,13 +17,12 @@
             </div>
         </nav>
     </header>
-
     <main>
         {% block content %}{% endblock %}
     </main>
-
     <footer>
-        <p>VN Catalog © 2026 | Данные из <a href="https://vndb.org" target="_blank">VNDB</a></p>
+        VN Catalog © 2026 | Данные из <a href="https://vndb.org" target="_blank">VNDB</a>
     </footer>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

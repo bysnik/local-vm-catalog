@@ -172,6 +172,8 @@ def scan_games(base_path: str) -> Dict[str, List[Dict]]:
         return result
 
     for item in os.listdir(base_path):
+        if item.startswith('.'):
+            continue
         item_path = os.path.join(base_path, item)
         if not os.path.isdir(item_path):
             continue

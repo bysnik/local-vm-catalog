@@ -6,45 +6,104 @@
     <p class="subtitle">Найдено: {{ total_standalone }} игр, {{ total_series }} серий</p>
 
     {% if series_data %}
-    <section class="series-section"><h2>📚 Серии</h2>
-    {% for series_name, games in series_data.items() %}
-    <div class="series-card"><h3 class="series-title">{{ series_name }}</h3><div class="games-grid">
-        {% for game in games %}
-        <div class="game-card"><a href="{{ url_for('game_page', game_path=(game.series + '/' + game.folder) if game.series else game.folder) }}">
-            {% if game.local_image %}
-                <img src="{{ game.local_image }}" alt="{{ game.title }}" loading="lazy">
-            {% elif game.image %}
-                <img src="{{ game.image }}" alt="{{ game.title }}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'no-image\'>No Cover</div>'">
-            {% else %}
-                <div class="no-image">No Cover</div>
-            {% endif %}
-            <div class="game-info"><h3>{{ game.title }}</h3>
-                {% if game.tags %}<div class="tags">{% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div>{% endif %}
+    <div class="series-section">
+        <h2>📚 Серии</h2>
+        {% for series_name, games in series_data.items() %}
+        <div class="series-card">
+            <h3 class="series-title">{{ series_name }}</h3>
+            <div class="games-grid">
+                {% for game in games %}
+                <!-- ✅ id="{{ game.folder }}" нужен для возврата по якорю -->
+                <div class="game-card" id="{{ game.folder }}">
+                    <a href="{{ url_for('game_page', game_path=(game.series + '/' + game.folder) if game.series else game.folder) }}">
+                        {% if game.local_image %}
+                            <img src="{{ game.local_image }}" alt="{{ game.title }}">
+                        {% elif game.image %}
+                            <img src="{{ game.image }}" alt="{{ game.title }}">
+                        {% else %}
+                            <div class="no-image">No Cover</div>
+                        {% endif %}
+                        <div class="game-info">
+                            <h3>{{ game.title }}</h3>
+                            {% if game.tags %}
+                            <div class="tags">
+                                {% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
             </div>
-        </a></div>
+        </div>
         {% endfor %}
-    </div></div>{% endfor %}</section>{% endif %}
+    </div>
+    {% endif %}
 
     {% if standalone_games %}
-    <section class="standalone-section"><h2>{% if series_data %}🎮 Отдельные игры{% else %}🎮 Все игры{% endif %}</h2>
+    <h2>{% if series_data %}🎮 Отдельные игры{% else %}🎮 Все игры{% endif %}</h2>
     <div class="games-grid">
         {% for game in standalone_games %}
-        <div class="game-card"><a href="{{ url_for('game_page', game_path=game.folder) }}">
-            {% if game.local_image %}
-                <img src="{{ game.local_image }}" alt="{{ game.title }}" loading="lazy">
-            {% elif game.image %}
-                <img src="{{ game.image }}" alt="{{ game.title }}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'no-image\'>No Cover</div>'">
-            {% else %}
-                <div class="no-image">No Cover</div>
-            {% endif %}
-            <div class="game-info"><h3>{{ game.title }}</h3>
-                {% if game.tags %}<div class="tags">{% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div>{% endif %}
-            </div>
-        </a></div>
+        <div class="game-card" id="{{ game.folder }}">
+            <a href="{{ url_for('game_page', game_path=game.folder) }}">
+                {% if game.local_image %}
+                    <img src="{{ game.local_image }}" alt="{{ game.title }}">
+                {% elif game.image %}
+                    <img src="{{ game.image }}" alt="{{ game.title }}">
+                {% else %}
+                    <div class="no-image">No Cover</div>
+                {% endif %}
+                <div class="game-info">
+                    <h3>{{ game.title }}</h3>
+                    {% if game.tags %}
+                    <div class="tags">
+                        {% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </a>
+        </div>
         {% endfor %}
-    </div></section>
+    </div>
     {% elif not series_data %}
-    <div class="no-games"><p>📁 Пусто. Добавьте игры в <code>{{ GAMES_FOLDER or './games' }}</code></p></div>
+    <div class="no-games">📁 Пусто. Добавьте игры в `./games`</div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Отключаем нативное "запоминание" скролла браузером
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+
+    const hash = window.location.hash.substring(1);
+
+    if (hash) {
+        // 2. Если есть якорь (вернулись с игры) — скроллим к карточке
+        const target = document.getElementById(hash);
+        if (target) {
+            setTimeout(() => {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Визуальная подсветка на 2 сек
+                target.style.transition = 'box-shadow 0.3s, transform 0.3s';
+                target.style.boxShadow = '0 0 0 3px #667eea, 0 8px 25px rgba(0,0,0,0.3)';
+                target.style.transform = 'scale(1.02)';
+                setTimeout(() => {
+                    target.style.boxShadow = '';
+                    target.style.transform = '';
+                }, 2000);
+            }, 50);
+        } else {
+            // Якорь есть, но элемент не найден → в начало
+            window.scrollTo(0, 0);
+        }
+    } else {
+        // 3. Нет якоря (обычный заход или клик по логотипу) → сразу в начало
+        window.scrollTo(0, 0);
+    }
+});
+</script>
 {% endblock %}

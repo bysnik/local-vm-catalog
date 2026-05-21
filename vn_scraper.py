@@ -337,45 +337,82 @@ class VNDBScraper:
             return None
 
     def _parse_ru_releases(self, soup: BeautifulSoup) -> List[Dict]:
-        """Извлекает информацию о русских релизах"""
+        """Извлекает информацию о русских релизах — ВСЕ строки таблицы"""
         releases = []
         try:
+            # Ищем ВСЕ <details>, проверяем каждый на наличие русского языка
             for details in soup.find_all('details'):
                 summary = details.find('summary')
                 if not summary:
                     continue
+
+                # Надёжная проверка: ищем <abbr> с title, содержащим 'Russian' (регистронезависимо)
                 abbr = summary.find('abbr', title=lambda t: t and 'russian' in t.lower())
                 if not abbr:
-                    continue
+                    continue  # Это не русская секция, проверяем следующую
+
                 table = details.find('table', class_='releases')
                 if not table:
                     continue
+
+                # Парсим ВСЕ строки таблицы (пропускаем заголовок [1:])
                 for row in table.find_all('tr')[1:]:
                     cells = row.find_all('td')
                     if len(cells) < 4:
                         continue
+
                     rel = {
                         'date': cells[0].text.strip(),
                         'rating': cells[1].text.strip(),
                         'platform': cells[2].text.strip(),
-                        'name': '', 'name_link': '', 'link_url': ''
+                        'name': '',
+                        'name_link': '',
+                        'type': '',      # (unofficial patch), (unofficial) и т.д.
+                        'link_url': '',
+                        'notes': ''
                     }
+
+                    # Название релиза + ссылка
                     name_a = cells[3].find('a', href=re.compile(r'^/r\d+'))
                     if name_a:
                         rel['name'] = name_a.text.strip()
                         rel['name_link'] = f"https://vndb.org{name_a['href']}"
                     else:
                         rel['name'] = cells[3].text.strip()
+
+                    # Тип релиза: <small>(unofficial patch)</small>
+                    small = cells[3].find('small')
+                    if small:
+                        rel['type'] = small.text.strip()
+
+                    # Ссылка на официальный сайт (последняя ячейка)
                     links_cell = cells[-1] if len(cells) >= 7 else None
                     if links_cell:
                         link_a = links_cell.find('a', href=lambda h: h and h.startswith('http'))
                         if link_a:
                             rel['link_url'] = link_a['href']
+
+                    # Заметки из иконок (опционально)
+                    icons_cell = cells[4] if len(cells) >= 5 else None
+                    if icons_cell:
+                        notes_abbr = icons_cell.find('abbr', class_='icon-rel-notes', title=True)
+                        if notes_abbr and notes_abbr.get('title'):
+                            rel['notes'] = notes_abbr['title'].strip()
+
+                    # Добавляем только если есть название
                     if rel['name']:
                         releases.append(rel)
-                        break
-        except:
+
+                # ✅ УБРАЛИ break — теперь парсер продолжит искать другие секции, если нужно
+                # Но для русского языка обычно одна секция, так что можно оставить break здесь,
+                # если уверены, что таблица только одна. Для надёжности — убираем.
+                # break  # ← УДАЛИТЬ ЭТУ СТРОКУ
+
+        except Exception as e:
+            # Для отладки: раскомментируйте, если нужно видеть ошибки
+            # print(f"⚠️ Ошибка парсинга русских релизов: {e}")
             pass
+
         return releases
 
     # ─────────────────────────────────────────────────────────────
