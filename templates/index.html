@@ -1,78 +1,205 @@
 {% extends "base.html" %}
+
 {% block title %}Каталог визуальных новелл{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h1>🎮 Каталог визуальных новелл</h1>
-    <p class="subtitle">Найдено: {{ total_standalone }} игр, {{ total_series }} серий</p>
-
-    {% if series_data %}
-    <div class="series-section">
-        <h2>📚 Серии</h2>
-        {% for series_name, games in series_data.items() %}
-        <div class="series-card">
-            <h3 class="series-title">{{ series_name }}</h3>
-            <div class="games-grid">
-                {% for game in games %}
-                <!-- ✅ id="{{ game.folder }}" нужен для возврата по якорю -->
-                <div class="game-card" id="{{ game.folder }}">
-                    <a href="{{ url_for('game_page', game_path=(game.series + '/' + game.folder) if game.series else game.folder) }}">
-                        {% if game.local_image %}
-                            <img src="{{ game.local_image }}" alt="{{ game.title }}">
-                        {% elif game.image %}
-                            <img src="{{ game.image }}" alt="{{ game.title }}">
-                        {% else %}
-                            <div class="no-image">No Cover</div>
-                        {% endif %}
-                        <div class="game-info">
-                            <h3>{{ game.title }}</h3>
-                            {% if game.tags %}
-                            <div class="tags">
-                                {% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
-                            </div>
-                            {% endif %}
-                        </div>
+<div class="catalog-layout">
+    <!-- ЛЕВЫЙ БЛОК: Навигация по сериям -->
+    <aside class="sidebar-left">
+        <h3 class="sidebar-title">📚 Навигация</h3>
+        <nav class="toc-nav">
+            {% if series_data %}
+                {% for series_name, games in series_data.items() %}
+                    <a href="#series-{{ loop.index }}" class="toc-link" data-target="series-{{ loop.index }}" data-title="{{ series_name }}">
+                        {{ series_name }}
                     </a>
-                </div>
                 {% endfor %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+            {% endif %}
 
-    {% if standalone_games %}
-    <h2>{% if series_data %}🎮 Отдельные игры{% else %}🎮 Все игры{% endif %}</h2>
-    <div class="games-grid">
-        {% for game in standalone_games %}
-        <div class="game-card" id="{{ game.folder }}">
-            <a href="{{ url_for('game_page', game_path=game.folder) }}">
-                {% if game.local_image %}
-                    <img src="{{ game.local_image }}" alt="{{ game.title }}">
-                {% elif game.image %}
-                    <img src="{{ game.image }}" alt="{{ game.title }}">
-                {% else %}
-                    <div class="no-image">No Cover</div>
-                {% endif %}
-                <div class="game-info">
-                    <h3>{{ game.title }}</h3>
-                    {% if game.tags %}
-                    <div class="tags">
-                        {% for tag in game.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+            {% if standalone_games %}
+                <a href="#standalone-games" class="toc-link" data-target="standalone-games" data-title="{% if series_data %}Отдельные игры{% else %}Все игры{% endif %}">
+                    🎮 {% if series_data %}Отдельные игры{% else %}Все игры{% endif %}
+                </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <main class="main-content">
+        <div class="container">
+            <h1>Каталог визуальных новелл</h1>
+            <p class="subtitle">Найдено: {{ total_standalone }} игр, {{ total_series }} серий</p>
+
+            {% if series_data %}
+                {% for series_name, games in series_data.items() %}
+                <section class="series-section" id="series-{{ loop.index }}">
+                    <div class="series-card">
+                        <h2 class="series-title">{{ series_name }}</h2>
+                        <div class="games-grid">
+                            {% for game in games %}
+                            <div class="game-card" id="{{ game.folder }}">
+                                <a href="{{ url_for('game_page', game_path=(game.series + '/' + game.folder) if game.series else game.folder) }}">
+                                    {% if game.local_image %}
+                                        <img src="{{ game.local_image }}" alt="{{ game.title }}">
+                                    {% elif game.image %}
+                                        <img src="{{ game.image }}" alt="{{ game.title }}">
+                                    {% else %}
+                                        <div class="no-image">No Cover</div>
+                                    {% endif %}
+                                    <div class="game-info">
+                                        <h3>{{ game.title }}</h3>
+                                        {% if game.tags %}
+                                        <div class="tags">
+                                            {% for tag in game.tags %}
+                                            <span class="tag">{{ tag }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
-                    {% endif %}
+                </section>
+                {% endfor %}
+            {% endif %}
+
+            {% if standalone_games %}
+            <section class="series-section" id="standalone-games">
+                <div class="series-card">
+                    <h2 class="series-title">{% if series_data %}🎮 Отдельные игры{% else %}🎮 Все игры{% endif %}</h2>
+                    <div class="games-grid">
+                        {% for game in standalone_games %}
+                        <div class="game-card" id="{{ game.folder }}">
+                            <a href="{{ url_for('game_page', game_path=game.folder) }}">
+                                {% if game.local_image %}
+                                    <img src="{{ game.local_image }}" alt="{{ game.title }}">
+                                {% elif game.image %}
+                                    <img src="{{ game.image }}" alt="{{ game.title }}">
+                                {% else %}
+                                    <div class="no-image">No Cover</div>
+                                {% endif %}
+                                <div class="game-info">
+                                    <h3>{{ game.title }}</h3>
+                                    {% if game.tags %}
+                                    <div class="tags">
+                                        {% for tag in game.tags %}
+                                        <span class="tag">{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
-            </a>
+            </section>
+            {% elif not series_data %}
+            <div class="no-games">
+                📁 Пусто. Добавьте игры в <code>./games</code>
+            </div>
+            {% endif %}
         </div>
-        {% endfor %}
-    </div>
-    {% elif not series_data %}
-    <div class="no-games">📁 Пусто. Добавьте игры в `./games`</div>
-    {% endif %}
+    </main>
+
+    <!-- ПРАВЫЙ БЛОК: Состав серии -->
+    <aside class="sidebar-right">
+        <h3 class="sidebar-title" id="right-sidebar-title">📋 Состав серии</h3>
+        <ul class="series-composition" id="series-composition-list">
+            <!-- Заполняется через JavaScript автоматически -->
+        </ul>
+    </aside>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tocLinks = document.querySelectorAll('.toc-link');
+    const compositionList = document.getElementById('series-composition-list');
+    const rightTitle = document.getElementById('right-sidebar-title');
+
+    // Функция обновления правого сайдбара
+    function updateRightSidebar(sectionId, title) {
+        rightTitle.textContent = title ? `📋 ${title}` : '📋 Состав серии';
+        compositionList.innerHTML = '';
+
+        const section = document.getElementById(sectionId);
+        if (!section) return;
+
+        const gameCards = section.querySelectorAll('.game-card');
+        gameCards.forEach(card => {
+            const link = card.querySelector('a');
+            const titleEl = card.querySelector('.game-info h3');
+
+            if (link && titleEl) {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = link.href;
+                a.textContent = titleEl.textContent;
+                a.title = titleEl.textContent;
+                li.appendChild(a);
+                compositionList.appendChild(li);
+            }
+        });
+    }
+
+    // Инициализация первой секции
+    const firstLink = tocLinks[0];
+    if (firstLink) {
+        updateRightSidebar(firstLink.getAttribute('data-target'), firstLink.getAttribute('data-title'));
+    }
+
+    // Отслеживание прокрутки
+    const observerOptions = {
+        root: null,
+        rootMargin: '-100px 0px -70% 0px',
+        threshold: 0
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const targetId = entry.target.id;
+
+                tocLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-target') === targetId) {
+                        link.classList.add('active');
+                        link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        updateRightSidebar(targetId, link.getAttribute('data-title'));
+                    }
+                });
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.series-section').forEach(section => {
+        observer.observe(section);
+    });
+
+    // Плавная прокрутка при клике
+    tocLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').substring(1);
+            const targetEl = document.getElementById(targetId);
+
+            if (targetEl) {
+                const headerOffset = 80;
+                const elementPosition = targetEl.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+});
 document.addEventListener('DOMContentLoaded', function() {
     // 1. Отключаем нативное "запоминание" скролла браузером
     if ('scrollRestoration' in history) {

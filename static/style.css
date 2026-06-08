@@ -67,8 +67,10 @@ main {
 
 .games-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, 250px);
     gap: 2rem;
+    justify-content: center;
+    justify-items: center;
 }
 
 .game-card {
@@ -98,7 +100,7 @@ main {
 }
 
 .no-image {
-    width: 100%;
+    width: 250px;
     height: 350px;
     background: linear-gradient(135deg, #667eea, #764ba2);
     display: flex;
@@ -833,4 +835,238 @@ footer a {
     object-fit: cover;
     display: block;
     transition: opacity 0.2s;
+}
+/* Компенсация padding у series-card, чтобы сетка внутри серий
+ *  имела ту же ширину, что и основная сетка каталога */
+.series-card .games-grid {
+    margin-left: 0rem;
+    margin-right: 0rem;
+}
+
+/* Опционально: добавляем отступы к заголовку серии,
+ *  чтобы текст не прилипал к краям карточек */
+.series-card .series-title {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+/* === МОБИЛЬНАЯ АДАПТАЦИЯ: 4 карточки в строку === */
+@media (max-width: 480px) {
+    .games-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.4rem;
+    }
+
+    .game-card img,
+    .no-image {
+        height: 100px;
+    }
+
+    .game-info {
+        padding: 0.3rem 0.4rem;
+    }
+
+    .game-info h3 {
+        font-size: 0.7rem;
+        margin-bottom: 0.2rem;
+        line-height: 1.2;
+        /* Обрезаем длинные названия после 2 строк */
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .tags {
+        gap: 0.15rem;
+    }
+
+    .tag {
+        font-size: 0.55rem;
+        padding: 0.1rem 0.3rem;
+        border-radius: 8px;
+    }
+}
+/* === ИСПРАВЛЕНИЕ ЦЕНТРАЛЬНОГО БЛОКА === */
+.catalog-layout {
+    display: block;
+    width: 100%;
+    padding: 2rem 300px; /* Отступы под боковые панели */
+}
+
+/* Было: main { max-width: 1200px; ... } */
+main {
+    max-width: 75%; /* Убрали ограничение в 1200px */
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Было: сломанный комментарий и padding: 2rem 300px; */
+/* === ИСПРАВЛЕНИЕ ЦЕНТРАЛЬНОГО БЛОКА === */
+.catalog-layout {
+    display: block;
+    width: 100%;
+    padding: 2rem; /* Убрали 300px, которые создавали пустые поля по бокам */
+}
+.main-content {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+.main-content .container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+.main-content .games-grid {
+    grid-template-columns: repeat(auto-fill, 250px); /* Было: minmax(220px, 1fr) */
+    gap: 1.5rem;
+    width: 100%;
+    justify-content: center;
+}
+
+/* Фиксированные боковые панели */
+.sidebar-left {
+    position: fixed;
+    left: 0;
+    top: 80px;
+    width: 280px;
+    height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 0 12px 12px 0;
+    padding: 1.5rem;
+    box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+    z-index: 50;
+}
+
+.sidebar-right {
+    position: fixed;
+    right: 0;
+    top: 80px;
+    width: 280px;
+    height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 12px 0 0 12px;
+    padding: 1.5rem;
+    box-shadow: -2px 0 15px rgba(0,0,0,0.1);
+    z-index: 50;
+}
+
+/* Стили для навигации */
+.sidebar-title {
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: #333;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #eee;
+}
+
+.toc-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.toc-link {
+    display: block;
+    padding: 0.5rem 0.8rem;
+    color: #555;
+    text-decoration: none;
+    font-size: 0.88rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.toc-link:hover {
+    background: #f0f0f0;
+    color: #667eea;
+}
+
+.toc-link.active {
+    background: #667eea;
+    color: white;
+    font-weight: 600;
+}
+
+/* Правая панель */
+.series-composition {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.series-composition li a {
+    display: block;
+    padding: 0.5rem 0.8rem;
+    color: #555;
+    text-decoration: none;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.series-composition li a:hover {
+    background: #f0f0f0;
+    color: #667eea;
+}
+
+/* Исправление для карточек */
+.game-card img {
+    width: 100%;
+    height: 350px;
+    object-fit: cover;
+    display: block;
+    background: #f0f0f0;
+}
+
+.no-image {
+    width: 250px; /* Было: 100% */
+    height: 350px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.9rem;
+    flex-shrink: 0; /* ← добавь это, чтобы не сжимался */
+}
+
+/* Скроллбары */
+.sidebar-left::-webkit-scrollbar,
+.sidebar-right::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-left::-webkit-scrollbar-track,
+.sidebar-right::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-left::-webkit-scrollbar-thumb,
+.sidebar-right::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+/* Адаптация */
+@media (max-width: 1100px) {
+    .catalog-layout {
+        padding: 1rem;
+    }
+
+    .sidebar-left, .sidebar-right {
+        display: none;
+    }
 }
