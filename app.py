@@ -41,7 +41,7 @@ def create_http_session() -> Session:
         "Referer": "https://vndb.org/",
         "Connection": "keep-alive",
         "Sec-Fetch-Dest": "image",
-        "Sec-Fetch-Mode": "no-cors",
+        "Sec-Fetch-Mode": "no-cors"
     })
 
     return session
@@ -60,6 +60,21 @@ DATA_FOLDER = './data'
 CACHE_FILE = os.path.join(DATA_FOLDER, 'games_cache.json')
 
 scraper = VNDBScraper()
+
+# ============================================================================
+# КЭШ ДВИЖКОВ (чтобы не сканировать папки каждый раз)
+# ============================================================================
+engine_cache = {}
+
+def detect_engine(folder_path: str) -> str:
+    """Определяет движок игры по наличию .xp3 файлов в папке."""
+    if not os.path.exists(folder_path):
+        return "Неизвестен"
+    for root, dirs, files in os.walk(folder_path):
+        for f in files:
+            if f.lower().endswith('.xp3'):
+                return "KiriKiri2"
+    return "Неизвестен"
 
 # ============================================================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -248,6 +263,12 @@ def index():
             if os.path.exists(test_path):
                 local_img = f"/static/covers/{folder}{ext}"
 
+        # --- Определение движка ---
+        engine = engine_cache.get(path)
+        if engine is None:
+            engine = detect_engine(path)
+            engine_cache[path] = engine
+
         return {
             'folder': folder,
             'path': path,
@@ -257,7 +278,8 @@ def index():
             'local_image': local_img,
             'vndb_url': data.get('vndb_url', ''),
             'tags': data.get('tags', [])[:5] if isinstance(data.get('tags'), list) else [],
-            'has_data': bool(data.get('parsed'))
+            'has_data': bool(data.get('parsed')),
+            'engine': engine
         }
 
     def apply_filters(games: List[Dict]) -> List[Dict]:
@@ -341,6 +363,13 @@ def game_page(game_path: str):
         download_game_assets(data, folder)
         cache[folder] = data
         save_cache(cache)
+
+    # --- Определение движка ---
+    engine = engine_cache.get(full_path)
+    if engine is None:
+        engine = detect_engine(full_path)
+        engine_cache[full_path] = engine
+    data['engine'] = engine
 
     # Содержимое папки
     files, truncated = get_folder_contents(full_path)
