@@ -67,13 +67,69 @@ scraper = VNDBScraper()
 engine_cache = {}
 
 def detect_engine(folder_path: str) -> str:
-    """Определяет движок игры по наличию .xp3 файлов в папке."""
+    """Определяет движок игры по наличию характерных файлов в папке."""
     if not os.path.exists(folder_path):
         return "Неизвестен"
+
+    # Флаги для всех возможных признаков
+    has_rpy = False          # Ren'Py
+    has_arc = False          # BGI / Majiro
+    has_bgi_gdb = False      # точный признак BGI
+    has_siglus = False       # Siglus Engine
+    has_ald_alk = False      # AliceSoft System 4
+    has_unity = False        # Unity
+    has_xp3 = False          # KiriKiri
+
     for root, dirs, files in os.walk(folder_path):
         for f in files:
-            if f.lower().endswith('.xp3'):
-                return "KiriKiri2"
+            lower_f = f.lower()
+
+            # Ren'Py: файлы .rpyc или .rpy
+            if lower_f.endswith(('.rpyc', '.rpy')):
+                has_rpy = True
+
+            # BGI / Majiro: .arc
+            if lower_f.endswith('.arc'):
+                has_arc = True
+
+            # BGI: файл BGI.gdb (точное имя)
+            if lower_f == 'bgi.gdb':
+                has_bgi_gdb = True
+
+            # Siglus Engine: имя файла содержит "SiglusEngine"
+            if 'siglusengine' in lower_f:
+                has_siglus = True
+
+            # AliceSoft System 4: .ald или .alk
+            if lower_f.endswith(('.ald', '.alk')):
+                has_ald_alk = True
+
+            # Unity: имя файла содержит "unity"
+            if 'unity' in lower_f:
+                has_unity = True
+
+            # KiriKiri: .xp3
+            if lower_f.endswith('.xp3'):
+                has_xp3 = True
+
+    # Проверка в порядке приоритета (от наиболее специфичных к общим)
+    if has_rpy:
+        return "RenPy"
+    if has_arc:
+        if has_bgi_gdb:
+            return "BGI Engine"
+        else:
+            # .arc есть, но BGI.gdb отсутствует – неопределённость между BGI и Majiro
+            return "BGI/Majiro Engine"
+    if has_siglus:
+        return "Siglus Engine"
+    if has_ald_alk:
+        return "AliceSoft System 4"
+    if has_unity:
+        return "Unity"
+    if has_xp3:
+        return "KiriKiri2"
+
     return "Неизвестен"
 
 # ============================================================================
